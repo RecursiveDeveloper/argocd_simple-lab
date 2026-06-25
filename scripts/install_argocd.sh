@@ -4,9 +4,15 @@ namespace="argocd"
 
 microk8s kubectl create namespace ${namespace}
 microk8s kubectl apply \
-    -n ${namespace} \
+    -n ${namespace} --server-side --force-conflicts \
     -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
-sleep 180
+sleep 240
+
+#Let ArgoCD to run in "insecure" mode. Traefik will handle the SSL/TLS termination
+microk8s kubectl patch configmap argocd-cmd-params-cm \
+    -n argocd \
+    -p '{"data":{"server.insecure":"true"}}'
+microk8s kubectl rollout restart deployment argocd-server -n argocd
 microk8s kubectl apply -f /opt/k8s-manifests/ingress.yml
 
 admin_encoded_password=$(microk8s kubectl get secret argocd-initial-admin-secret -n ${namespace} -o jsonpath="{.data.password}")
