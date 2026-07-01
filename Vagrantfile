@@ -13,8 +13,6 @@ Vagrant.configure("2") do |config|
     vb.memory = "4096"
   end
 
-  config.vm.provision "shell", path: "scripts/install_docker.sh", args: [OWNER]
-  config.vm.provision "shell", path: "scripts/install_k8s_tools.sh"
   config.vm.provision "shell", path: "scripts/install_microk8s.sh", args: [OWNER]
   config.vm.provision "shell", path: "scripts/install_argocd.sh", args: [OWNER]
 end

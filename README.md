@@ -26,8 +26,7 @@ Set up and provision your own local ArgoCD environment using Vagrant to deploy a
 
 ## Tech Stack 
 
-- **Container Runtime:** Docker
-- **Kubernetes:** MicroK8s
+- **Kubernetes:** MicroK8s (includes built-in container runtime and kubectl)
 - **GitOps:** ArgoCD
 - **Virtualization:** VirtualBox, Vagrant
 - **OS:** Ubuntu 22.04 (Jammy)
@@ -47,10 +46,9 @@ vagrant up
 ```
 
 The provisioning process will:
-1. Install Docker Engine
-2. Install kubectl and Kubernetes tools
-3. Install and configure MicroK8s
-4. Deploy ArgoCD with ingress configuration
+1. Install and configure MicroK8s (includes built-in container runtime and `microk8s kubectl`)
+2. Enable MicroK8s DNS and ingress add-ons
+3. Deploy ArgoCD with ingress configuration
 
 ## Access ArgoCD
 
@@ -64,9 +62,7 @@ After successful deployment:
 ```
 argocd-lab/
 ├── scripts/
-│   ├── install_docker.sh      # Docker installation
-│   ├── install_k8s_tools.sh    # kubectl installation
-│   ├── install_microk8s.sh     # MicroK8s setup
+│   ├── install_microk8s.sh     # MicroK8s setup (includes container runtime and kubectl)
 │   └── install_argocd.sh       # ArgoCD deployment
 ├── k8s-manifests/
 │   └── ingress.yml             # ArgoCD ingress configuration

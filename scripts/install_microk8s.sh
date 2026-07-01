@@ -14,3 +14,6 @@ sudo chown -f -R $owner ~/.kube
 
 sudo microk8s enable dns
 sudo microk8s enable ingress
+
+echo "alias k8s='microk8s kubectl'" >> /home/$owner/.bashrc
+echo "Alias 'k8s' added. Run 'source ~/.bashrc' or re-login to use it."
