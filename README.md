@@ -20,57 +20,125 @@ I'm a junior DevOps engineer with some expertise in BackEnd development using Ja
 
 # ArgoCD Lab with MicroK8s
 
-Set up and provision your own local ArgoCD environment using Vagrant to deploy an Ubuntu VM with MicroK8s cluster and ArgoCD for GitOps workflows. This lab provides a complete local development environment for learning and testing ArgoCD deployments.
+Set up a local ArgoCD environment for GitOps workflows on a MicroK8s cluster using two simple Bash scripts. This lab is meant for learning and testing ArgoCD deployments in a local development environment.
 
-![Simple_Ansible-lab_diagram](https://raw.githubusercontent.com/RecursiveDeveloper/static-media-content/refs/heads/main/Argocd_Simple-Diagram.png)
+![ArgoCD_Simple-Lab_diagram](https://raw.githubusercontent.com/RecursiveDeveloper/static-media-content/refs/heads/main/Argocd_Simple-Diagram.png)
 
-## Tech Stack 
+## Tech Stack
 
-- **Kubernetes:** MicroK8s (includes built-in container runtime and kubectl)
-- **GitOps:** ArgoCD
-- **Virtualization:** VirtualBox, Vagrant
-- **OS:** Ubuntu 22.04 (Jammy)
+- **Kubernetes:** MicroK8s (includes built-in container runtime, `kubectl`, and the Traefik ingress controller)
+- **GitOps:** ArgoCD (official stable manifests)
+- **Ingress/TLS:** Traefik (MicroK8s `ingress` add-on) terminates SSL/TLS, ArgoCD runs in insecure mode
+
+## Folder Structure
+
+```
+argocd_simple-lab/
+├── deploy.sh              # Install and configure ArgoCD on the cluster
+├── destroy.sh             # Remove ArgoCD and its namespace from the cluster
+├── k8s-manifests/
+│   └── ingress.yml        # ArgoCD server ingress (routes / to argocd-server:80)
+├── README.md
+└── .gitignore
+```
 
 ## Prerequisites
 
-1. Install VirtualBox as your virtual machine provider [Install VirtualBox](https://www.virtualbox.org/wiki/Downloads)
-2. Install Vagrant according to your operating system [Install Vagrant](https://developer.hashicorp.com/vagrant/downloads)
-3. Ensure you have at least 4GB RAM available for the VM
+1. A Linux machine (or VM) where MicroK8s runs, with at least 2 CPUs and 4GB of RAM
+2. MicroK8s installed and ready — follow the steps below
+3. The `dns` and `ingress` MicroK8s add-ons enabled
+
+## Environment Setup
+
+Install MicroK8s and enable the required add-ons:
+
+```bash
+sudo snap install microk8s --classic
+sudo usermod -aG microk8s $USER   # then log out and back in
+microk8s status --wait-ready
+microk8s enable dns
+microk8s enable ingress
+```
+
+Verify the cluster is healthy:
+
+```bash
+microk8s kubectl get node
+```
+
+> This lab uses `microk8s kubectl` for all cluster commands. No separate `kubectl` or `Docker` installation is required — MicroK8s bundles its own container runtime and CLI tools.
 
 ## Deployment
 
-To deploy this project run:
+From the repository root, run:
 
 ```bash
-vagrant up
+./deploy.sh
 ```
 
-The provisioning process will:
-1. Install and configure MicroK8s (includes built-in container runtime and `microk8s kubectl`)
-2. Enable MicroK8s DNS and ingress add-ons
-3. Deploy ArgoCD with ingress configuration
+The script is idempotent and performs the following:
+
+1. Creates the `argocd` namespace if it does not already exist
+2. Applies the official ArgoCD installation manifest (server-side apply with force-conflicts)
+3. On a fresh install, waits for ArgoCD to become ready
+4. Configures ArgoCD to run in `insecure` mode (`server.insecure=true`) and restarts `argocd-server` — Traefik handles SSL/TLS termination
+5. Applies the ingress to route traffic to the ArgoCD server
+6. Prints the admin credentials for the ArgoCD UI
 
 ## Access ArgoCD
 
-After successful deployment:
-- **URL:** https://localhost
-- **Username:** admin
-- **Password:** Check the terminal output after `vagrant up` completes
+After a successful deployment:
 
-## Project Structure
+| Parameter | Value |
+| --- | --- |
+| URL | `https://localhost` |
+| Username | `admin` |
+| Password | Printed in the terminal output (decoded from the `argocd-initial-admin-secret`) |
+
+> Running MicroK8s inside WSL? The ArgoCD UI won't be reachable from outside WSL until you forward the service ports — see [Accessing from Outside WSL](#accessing-from-outside-wsl-port-forwarding).
+
+## Accessing from Outside WSL (Port Forwarding)
+
+If MicroK8s is running inside WSL (or another VM) and you want to reach the ArgoCD UI from outside WSL, port-forward the ArgoCD server service to a local port:
+
+```bash
+microk8s kubectl port-forward svc/argocd-server <HOST_PORT>:80 -n argocd
+```
+
+For example:
+
+```bash
+microk8s kubectl port-forward svc/argocd-server 8080:80 -n argocd
+```
+
+Then open `http://localhost:8080` in your browser.
+
+> **Notes**
+> - Since ArgoCD runs in `insecure` mode, the UI is served over plain HTTP on the forwarded port — no self-signed certificate warning.
+> - The command is blocking: it keeps the port open until you stop it with `Ctrl+C`.
+> - Pick any free port for `<HOST_PORT>` (e.g. `8080`), and access it from the Windows side too — WSL2 forwards localhost ports to the Windows host automatically.
+
+## Teardown
+
+To remove ArgoCD and its namespace from the cluster:
+
+```bash
+./destroy.sh
+```
+
+This deletes the ingress, the ArgoCD installation manifests, and the `argocd` namespace.
+
+## How It Works
 
 ```
-argocd-lab/
-├── scripts/
-│   ├── install_microk8s.sh     # MicroK8s setup (includes container runtime and kubectl)
-│   └── install_argocd.sh       # ArgoCD deployment
-├── k8s-manifests/
-│   └── ingress.yml             # ArgoCD ingress configuration
-├── Vagrantfile                 # VM configuration
-└── README.md
+Browser ──(HTTPS)──> Traefik ingress (MicroK8s, TLS termination)
+                          │
+                          ▼
+                     argocd-server:80 (insecure mode)
 ```
 
-For more information about Vagrant commands, check the [vagrant-cheat-sheet](https://gist.github.com/wpscholar/a49594e2e2b918f4d0c4)
+- Traefik exposes the ArgoCD UI on `https://localhost`.
+- ArgoCD runs with `server.insecure=true` because TLS is terminated upstream by the ingress controller.
 
 ## Authors
 
