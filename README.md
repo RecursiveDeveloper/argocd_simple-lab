@@ -95,6 +95,11 @@ After a successful deployment:
 | Username | `admin` |
 | Password | Printed in the terminal output (decoded from the `argocd-initial-admin-secret`) |
 
+> **Forgot the password?** If you cleared the terminal, retrieve it at any time with:
+> ```bash
+> microk8s kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath="{.data.password}" | base64 --decode && echo
+> ```
+
 > Running MicroK8s inside WSL? The ArgoCD UI won't be reachable from outside WSL until you forward the service ports — see [Accessing from Outside WSL](#accessing-from-outside-wsl-port-forwarding).
 
 ## Accessing from Outside WSL (Port Forwarding)

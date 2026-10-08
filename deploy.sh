@@ -25,7 +25,11 @@ microk8s kubectl apply \
 
 if [ "${FRESH_INSTALL}" = true ]; then
     echo "Fresh install detected, waiting for ArgoCD to be ready..."
-    sleep 240
+    for deploy in argocd-server argocd-repo-server argocd-application-controller argocd-dex-server argocd-redis; do
+        echo "Waiting for ${deploy}..."
+        microk8s kubectl rollout status deployment/${deploy} -n ${NAMESPACE} --timeout=5m 2>/dev/null || \
+        microk8s kubectl rollout status statefulset/${deploy} -n ${NAMESPACE} --timeout=5m 2>/dev/null || true
+    done
 fi
 
 #Let ArgoCD to run in "insecure" mode. Traefik will handle the SSL/TLS termination
